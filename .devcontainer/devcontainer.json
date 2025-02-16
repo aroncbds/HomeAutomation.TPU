@@ -1,0 +1,20 @@
+{
+    "name": "Arduino Dev",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "settings": {
+        "terminal.integrated.defaultProfile.linux": "/bin/bash"
+    },
+    "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.makefile-tools",
+        "platformio.platformio-ide"
+    ],
+    "runArgs": [
+        "--device=/dev/ttyUSB0"
+    ],
+    "remoteUser": "root",
+    "workspaceFolder": "/workspace"
+}
