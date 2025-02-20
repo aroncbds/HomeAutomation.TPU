@@ -1,15 +1,14 @@
 #include <Arduino_FreeRTOS.h>
-#include <DallasTemperature.h>
 #include <Ethernet2.h>
-#include <LiquidCrystal_I2C.h>
-#include <OneWire.h>
-#include <semphr.h>
 #include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <semphr.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
-#define LCD_TANK_1_TOP_I2C_ADDR     0x27
-#define LCD_TANK_1_MIDDLE_I2C_ADDR  0x20
-#define LCD_TANK_2_TOP_I2C_ADDR     0x21
-#define LCD_TANK_3_TOP_I2C_ADDR     0x22
+#define LCD_1_I2C_ADDR     0x27
+#define LCD_2_I2C_ADDR  0x21
+#define LCD_3_I2C_ADDR     0x22
 
 #define ONE_WIRE_BUS 2  // DS18B20 data pin
 
@@ -22,9 +21,13 @@ static SemaphoreHandle_t snprintfMutex;
 
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
-float temperatureC = 0.0;
+float temperatureT1T = 0.0;
+float temperatureT1M = 0.0;
+float tempProbe = 0.0;
 
-LiquidCrystal_I2C lcd_t1_top(LCD_TANK_1_TOP_I2C_ADDR, 20, 4);
+LiquidCrystal_I2C lcd_1(LCD_1_I2C_ADDR, 20, 4);
+LiquidCrystal_I2C lcd_2(LCD_2_I2C_ADDR, 20, 4);
+LiquidCrystal_I2C lcd_3(LCD_3_I2C_ADDR, 20, 4);
 
 // Ethernet setup
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; 
@@ -45,8 +48,14 @@ void setup() {
     }
 
   // Initialize displays
-  lcd_t1_top.init();
-  lcd_t1_top.backlight();
+  lcd_1.init();
+  lcd_1.backlight();
+
+  lcd_2.init();
+  lcd_2.backlight();
+
+  lcd_3.init();
+  lcd_3.backlight();
 
   // The following doesn't seem to work
   // lcd_t1_top.setCursor(0, 0);
@@ -64,6 +73,7 @@ void setup() {
   xTaskCreate(TaskWebServer, "WebServer", 128, NULL, 2, NULL);
   xTaskCreate(TaskUpdateDisplays, "UpdateDisplays", 128, NULL, 3, NULL);
 }
+
 
 void loop() {}
 
@@ -92,7 +102,7 @@ void TaskWebServer(void *pvParameters)
         client.println("Connection: close");
         client.println();
         client.print("{\"temperature\":");
-        client.print(temperatureC);
+        client.print(temperatureT1T);
         client.println("}");
       }
 
@@ -118,22 +128,45 @@ void TaskUpdateDisplays(void *pvParameters)
 
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
         char tempStr[12];
-        dtostrf(temperatureC, 6, 2, tempStr);
-
+        dtostrf(temperatureT1T, 6, 2, tempStr);
         snprintf_P(buffer, sizeof(buffer), PSTR("T1T: %sC"), tempStr);
-        
         xSemaphoreGive(snprintfMutex);
     }
 
     vTaskDelay(pdMS_TO_TICKS(1000));
 
-    // Tank 1 top temperature
-    lcd_t1_top.clear();
-    lcd_t1_top.setCursor(0, 0);
-    lcd_t1_top.print(buffer);
+    lcd_1.clear();
+    lcd_1.setCursor(0, 0);
+    lcd_1.print(buffer);
 
-    // Tank 1 middle temperature
-    // ...
+    if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
+        char tempStr[12];
+        dtostrf(temperatureT1M, 6, 2, tempStr);
+        snprintf_P(buffer, sizeof(buffer), PSTR("T1M: %sC"), tempStr);
+        xSemaphoreGive(snprintfMutex);
+    }
+
+    lcd_1.setCursor(0, 1);
+    lcd_1.print(buffer);
+
+    lcd_2.clear();
+    lcd_2.setCursor(0, 0);
+    lcd_2.print("T1B: N/A");
+    lcd_2.setCursor(0, 1);
+    lcd_2.print("IP:192.168.1.177");
+    
+    if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
+        char tempStr[12];
+        dtostrf(tempProbe, 6, 2, tempStr);
+        snprintf_P(buffer, sizeof(buffer), PSTR("T2T: %sC"), tempStr);
+        xSemaphoreGive(snprintfMutex);
+    }
+
+    lcd_3.clear();
+    lcd_3.setCursor(0 ,0);
+    lcd_3.print(buffer);
+    lcd_3.setCursor(0, 1);
+    lcd_3.print("T3T: N/A");
   }
 }
 
@@ -151,9 +184,31 @@ void TaskReadTempSensors(void *pvParameters)
 {
   (void)pvParameters;
 
+  // TODO: We need to fetch the temperature by address
   for (;;) {
     sensors.requestTemperatures();
-    temperatureC = sensors.getTempCByIndex(0);
+    temperatureT1T = sensors.getTempCByIndex(0);
+    temperatureT1M = sensors.getTempCByIndex(1);
+    tempProbe = sensors.getTempCByIndex(2);
     vTaskDelay(pdMS_TO_TICKS(2000));  // Run every 2 seconds
   }
+
+  // for (;;) {
+  //   int sensorValue = analogRead(A0);
+  //   Serial.println(sensorValue);
+  //   vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
+  // }
 }
+
+
+
+  // pinMode(LED_BUILTIN, OUTPUT);
+
+  // for (;;)
+  // {
+  //   // placeholder, for now...
+  //   digitalWrite(LED_BUILTIN, HIGH);
+  //   vTaskDelay(1000 / portTICK_PERIOD_MS);
+  //   digitalWrite(LED_BUILTIN, LOW);
+  //   vTaskDelay(1000 / portTICK_PERIOD_MS);
+  // }
