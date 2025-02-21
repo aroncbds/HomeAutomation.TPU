@@ -169,9 +169,9 @@ void TaskUpdateDisplays(void *pvParameters)
     // }
 
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
-        char tempStr[12];
+        char tempStr[13];
         dtostrf(temperatureT1T, 6, 2, tempStr);
-        snprintf_P(buffer, sizeof(buffer), PSTR("T1T: %sC"), tempStr);
+        snprintf_P(buffer, sizeof(buffer), PSTR("T1 Top: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
     }
 
@@ -182,9 +182,9 @@ void TaskUpdateDisplays(void *pvParameters)
     lcd_1.print(buffer);
 
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
-        char tempStr[12];
+        char tempStr[13];
         dtostrf(temperatureT1M, 6, 2, tempStr);
-        snprintf_P(buffer, sizeof(buffer), PSTR("T1M: %sC"), tempStr);
+        snprintf_P(buffer, sizeof(buffer), PSTR("T1 Mid: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
     }
 
@@ -193,14 +193,14 @@ void TaskUpdateDisplays(void *pvParameters)
 
     lcd_2.clear();
     lcd_2.setCursor(0, 0);
-    lcd_2.print("T1B: N/A");
+    lcd_2.print("T1 Bot: N/A");
     lcd_2.setCursor(0, 1);
     lcd_2.print("IP:192.168.1.177");
     
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
-        char tempStr[12];
+        char tempStr[13];
         dtostrf(tempProbe, 6, 2, tempStr);
-        snprintf_P(buffer, sizeof(buffer), PSTR("T2T: %sC"), tempStr);
+        snprintf_P(buffer, sizeof(buffer), PSTR("T2 Top: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
     }
 
@@ -208,7 +208,7 @@ void TaskUpdateDisplays(void *pvParameters)
     lcd_3.setCursor(0 ,0);
     lcd_3.print(buffer);
     lcd_3.setCursor(0, 1);
-    lcd_3.print("T3T: N/A");
+    lcd_3.print("T3 Top: N/A");
   }
 }
 
