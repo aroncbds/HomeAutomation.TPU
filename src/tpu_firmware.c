@@ -161,7 +161,7 @@ void TaskUpdateDisplays(void *pvParameters)
 
   for (;;)
   {
-    char buffer[15];
+    char buffer[16];
 
     // if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
     //     snprintf(buffer, sizeof(buffer), "T1 Topp: %d C", temperatureC);
@@ -169,7 +169,7 @@ void TaskUpdateDisplays(void *pvParameters)
     // }
 
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
-        char tempStr[13];
+        char tempStr[15];
         dtostrf(temperatureT1T, 6, 2, tempStr);
         snprintf_P(buffer, sizeof(buffer), PSTR("T1 Top: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
@@ -182,7 +182,7 @@ void TaskUpdateDisplays(void *pvParameters)
     lcd_1.print(buffer);
 
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
-        char tempStr[13];
+        char tempStr[15];
         dtostrf(temperatureT1M, 6, 2, tempStr);
         snprintf_P(buffer, sizeof(buffer), PSTR("T1 Mid: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
@@ -198,7 +198,7 @@ void TaskUpdateDisplays(void *pvParameters)
     lcd_2.print("IP:192.168.1.177");
     
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
-        char tempStr[13];
+        char tempStr[15];
         dtostrf(tempProbe, 6, 2, tempStr);
         snprintf_P(buffer, sizeof(buffer), PSTR("T2 Top: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
