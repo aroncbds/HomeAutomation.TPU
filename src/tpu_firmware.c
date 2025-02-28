@@ -4,6 +4,10 @@ Polls a group of 1Wire-sensors and makes the temperatures available as JSON-data
 References:
 https://www.freertos.org/Documentation/02-Kernel/04-API-references/10-Semaphore-and-Mutexes/12-xSemaphoreTake
 
+Todo:
+- Add button with timer for setting boiler cleaning interval flag
+- Add button with timer and ISR-handler for enabling LCD backlight
+
 aroncbds@yahoo.se
 Version: 1.0 - 2025-02-28
 ***********************************************************************************************************************/
