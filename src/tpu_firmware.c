@@ -1,3 +1,13 @@
+/***********************************************************************************************************************
+Polls a group of 1Wire-sensors and makes the temperatures available as JSON-data on the attached LAN-interface.
+
+References:
+https://www.freertos.org/Documentation/02-Kernel/04-API-references/10-Semaphore-and-Mutexes/12-xSemaphoreTake
+
+aroncbds@yahoo.se
+Version: 1.0 - 2025-02-28
+***********************************************************************************************************************/
+
 #include <Arduino_FreeRTOS.h>
 #include <Ethernet2.h>
 #include <Wire.h>
@@ -6,30 +16,14 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+// Displays
 #define LCD_1_I2C_ADDR    0x27
 #define LCD_2_I2C_ADDR    0x21
 #define LCD_3_I2C_ADDR    0x22
 
 #define ONE_WIRE_BUS 2  // DS18B20 data pin
 
-// https://www.freertos.org/Documentation/02-Kernel/04-API-references/10-Semaphore-and-Mutexes/12-xSemaphoreTake
-
-
-/*
-Sensor 1:
-0x28, 0x9C, 0x50, 0x43, 0xD4, 0xE1, 0x3C, 0x04
-
-Sensor 2:
-0x28, 0xC1, 0xA3, 0x43, 0xD4, 0xE1, 0x3C, 0x88
-
-Sensor 3:
-0x28, 0x0F, 0x68, 0x43, 0xD4, 0xE1, 0x3C, 0x56
-
-Sensor 4:
-0x28, 0x5C, 0x10, 0x43, 0xD4, 0xE1, 0x3C, 0x72
-*/
-
-// DS18B20 probes
+// DS18B20 tank sensors
 uint8_t sensor1_t1t[8] = { 0x28, 0x9C, 0x50, 0x43, 0xD4, 0xE1, 0x3C, 0x04 };
 uint8_t sensor2_t1m[8] = { 0x28, 0xC1, 0xA3, 0x43, 0xD4, 0xE1, 0x3C, 0x88 };
 uint8_t sensor3_t23[8] = { 0x28, 0x0F, 0x68, 0x43, 0xD4, 0xE1, 0x3C, 0x56 };
@@ -37,6 +31,7 @@ uint8_t sensor4_t3t[8] = { 0x28, 0x5C, 0x10, 0x43, 0xD4, 0xE1, 0x3C, 0x72 };
 
 void TaskUpdateDisplays(void *pvParameters);
 void TaskReadTempSensors(void *pvParameters);
+void TaskWebServer(void *pvParameters);
 
 static SemaphoreHandle_t snprintfMutex;
 
@@ -44,6 +39,7 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 float temperatureT1T = 0.0;
 float temperatureT1M = 0.0;
+float temperatureT3T = 0.0;
 float tempProbe = 0.0;
 
 LiquidCrystal_I2C lcd_1(LCD_1_I2C_ADDR, 20, 4);
@@ -218,12 +214,19 @@ void TaskUpdateDisplays(void *pvParameters)
         snprintf_P(buffer, sizeof(buffer), PSTR("T2 Top: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
     }
-
     lcd_3.clear();
     lcd_3.setCursor(0 ,0);
     lcd_3.print(buffer);
+
+    if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
+        char tempStr[15];
+        dtostrf(temperatureT3T, 6, 2, tempStr);
+        snprintf_P(buffer, sizeof(buffer), PSTR("T3 Top: %sC"), tempStr);
+        xSemaphoreGive(snprintfMutex);
+    }
+
     lcd_3.setCursor(0, 1);
-    lcd_3.print("T3 Top: N/A");
+    lcd_3.print(buffer);
   }
 }
 
@@ -243,28 +246,10 @@ void TaskReadTempSensors(void *pvParameters)
 
   for (;;) {
     sensors.requestTemperatures();
-    temperatureT1T = sensors.getTempCByIndex(0);
-    temperatureT1M = sensors.getTempCByIndex(1);
-    tempProbe = sensors.getTempCByIndex(2);
+    //temperatureT1T = sensors.getTempCByIndex(0);
+    //temperatureT1M = sensors.getTempCByIndex(1);
+    temperatureT3T = sensors.getTempC(sensor4_t3t);
+    //tempProbe = sensors.getTempCByIndex(2);
     vTaskDelay(pdMS_TO_TICKS(10000));  // Run every 10 seconds
   }
-
-  // for (;;) {
-  //   int sensorValue = analogRead(A0);
-  //   Serial.println(sensorValue);
-  //   vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
-  // }
 }
-
-
-
-  // pinMode(LED_BUILTIN, OUTPUT);
-
-  // for (;;)
-  // {
-  //   // placeholder, for now...
-  //   digitalWrite(LED_BUILTIN, HIGH);
-  //   vTaskDelay(1000 / portTICK_PERIOD_MS);
-  //   digitalWrite(LED_BUILTIN, LOW);
-  //   vTaskDelay(1000 / portTICK_PERIOD_MS);
-  // }
