@@ -6,13 +6,34 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-#define LCD_1_I2C_ADDR     0x27
-#define LCD_2_I2C_ADDR  0x21
-#define LCD_3_I2C_ADDR     0x22
+#define LCD_1_I2C_ADDR    0x27
+#define LCD_2_I2C_ADDR    0x21
+#define LCD_3_I2C_ADDR    0x22
 
 #define ONE_WIRE_BUS 2  // DS18B20 data pin
 
 // https://www.freertos.org/Documentation/02-Kernel/04-API-references/10-Semaphore-and-Mutexes/12-xSemaphoreTake
+
+
+/*
+Sensor 1:
+0x28, 0x9C, 0x50, 0x43, 0xD4, 0xE1, 0x3C, 0x04
+
+Sensor 2:
+0x28, 0xC1, 0xA3, 0x43, 0xD4, 0xE1, 0x3C, 0x88
+
+Sensor 3:
+0x28, 0x0F, 0x68, 0x43, 0xD4, 0xE1, 0x3C, 0x56
+
+Sensor 4:
+0x28, 0x5C, 0x10, 0x43, 0xD4, 0xE1, 0x3C, 0x72
+*/
+
+// DS18B20 probes
+uint8_t sensor1_t1t[8] = { 0x28, 0x9C, 0x50, 0x43, 0xD4, 0xE1, 0x3C, 0x04 };
+uint8_t sensor2_t1m[8] = { 0x28, 0xC1, 0xA3, 0x43, 0xD4, 0xE1, 0x3C, 0x88 };
+uint8_t sensor3_t23[8] = { 0x28, 0x0F, 0x68, 0x43, 0xD4, 0xE1, 0x3C, 0x56 };
+uint8_t sensor4_t3t[8] = { 0x28, 0x5C, 0x10, 0x43, 0xD4, 0xE1, 0x3C, 0x72 };
 
 void TaskUpdateDisplays(void *pvParameters);
 void TaskReadTempSensors(void *pvParameters);
@@ -30,7 +51,7 @@ LiquidCrystal_I2C lcd_2(LCD_2_I2C_ADDR, 20, 4);
 LiquidCrystal_I2C lcd_3(LCD_3_I2C_ADDR, 20, 4);
 
 // Ethernet setup
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; 
+byte mac[] = { 0xA8, 0x61, 0x0A, 0xAE, 0xA9, 0x1A };
 IPAddress ip(192, 168, 1, 177);
 EthernetServer server(80);
 
@@ -55,26 +76,6 @@ void setup() {
     Serial.begin(115200);
 
     sensors.begin();
-
-
-    // // locate devices on the bus
-    // Serial.println("Locating devices...");
-    // Serial.print("Found ");
-    // deviceCount = sensors.getDeviceCount();
-    // Serial.print(deviceCount, DEC);
-    // Serial.println(" devices.");
-    // Serial.println("");
-    
-    // Serial.println("Printing addresses...");
-    // for (int i = 0;  i < deviceCount;  i++)
-    // {
-    //   Serial.print("Sensor ");
-    //   Serial.print(i+1);
-    //   Serial.print(" : ");
-    //   sensors.getAddress(Thermometer, i);
-    //   printAddress(Thermometer);
-    // }
-
 
     snprintfMutex = xSemaphoreCreateMutex();
     if (snprintfMutex == NULL) {
@@ -106,32 +107,46 @@ void setup() {
   }
 
   xTaskCreate(TaskReadTempSensors, "ReadTempSensors", 128, NULL, 1, NULL);
-  xTaskCreate(TaskWebServer, "WebServer", 128, NULL, 2, NULL);
+  xTaskCreate(TaskWebServer, "WebServer", 256, NULL, 2, NULL);
   xTaskCreate(TaskUpdateDisplays, "UpdateDisplays", 128, NULL, 3, NULL);
 }
 
 
 void loop() {}
 
-void TaskWebServer(void *pvParameters)
-{
+void TaskWebServer(void *pvParameters) {
   (void)pvParameters;
 
+  // TODO - Ethernet.h (more recent version): Check for Ethernet hardware present
+  // if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+  //   Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+  //   while (true) {
+  //     delay(1); // do nothing, no point running without Ethernet hardware
+  //   }
+  // }
+  // if (Ethernet.linkStatus() == LinkOFF) {
+  //   Serial.println("Ethernet cable is not connected.");
+  // }
+
   server.begin();
-  
+
   for (;;) {
     EthernetClient client = server.available();
     if (client) {
       String request = "";
-      while (client.available()) {
-        char c = client.read();
-        request += c;
-        if (c == '\n' && request.endsWith("\r\n\r\n")) {
-          break;
+      unsigned long timeout = millis();
+      
+      while (client.connected() && (millis() - timeout < 1000)) {  // 1 sec timeout
+        while (client.available()) {
+          char c = client.read();
+          request += c;
+          if (c == '\n' && request.endsWith("\r\n\r\n")) {
+            break;
+          }
         }
       }
 
-      // Serve temperature JSON response
+      // Serve JSON response
       if (request.indexOf("GET /temperatures") >= 0) {
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: application/json");
@@ -139,18 +154,18 @@ void TaskWebServer(void *pvParameters)
         client.println();
         client.print("{\"t1t\":");
         client.print(temperatureT1T);
-        client.print(",");
-        client.print("\"t1m\":");
+        client.print(",\"t1m\":");
         client.print(temperatureT1M);
-        client.print(",");
-        client.print("\"t2t\":");
+        client.print(",\"t2t\":");
         client.print(tempProbe);
         client.println("}");
       }
 
+      client.flush();
       client.stop();
     }
-    vTaskDelay(pdMS_TO_TICKS(100));  // Avoid busy loop
+
+    vTaskDelay(pdMS_TO_TICKS(50));  // Avoid high Ethernet load
   }
 }
 
@@ -226,13 +241,12 @@ void TaskReadTempSensors(void *pvParameters)
 {
   (void)pvParameters;
 
-  // TODO: We need to fetch the temperature by address
   for (;;) {
     sensors.requestTemperatures();
     temperatureT1T = sensors.getTempCByIndex(0);
     temperatureT1M = sensors.getTempCByIndex(1);
     tempProbe = sensors.getTempCByIndex(2);
-    vTaskDelay(pdMS_TO_TICKS(2000));  // Run every 2 seconds
+    vTaskDelay(pdMS_TO_TICKS(10000));  // Run every 10 seconds
   }
 
   // for (;;) {
