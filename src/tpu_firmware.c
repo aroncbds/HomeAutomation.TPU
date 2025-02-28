@@ -3,6 +3,7 @@ Polls a group of 1Wire-sensors and makes the temperatures available as JSON-data
 
 References:
 https://www.freertos.org/Documentation/02-Kernel/04-API-references/10-Semaphore-and-Mutexes/12-xSemaphoreTake
+https://lastminuteengineers.com/multiple-ds18b20-arduino-tutorial/
 
 Todo:
 - Add button with timer for setting boiler cleaning interval flag
@@ -57,8 +58,6 @@ byte mac[] = { 0xA8, 0x61, 0x0A, 0xAE, 0xA9, 0x1A };
 IPAddress ip(192, 168, 1, 177);
 EthernetServer server(80);
 
-// Trying to fetch device addresses of temperature probes (perhaps we need to create a one-off application for this purpose)
-DeviceAddress Thermometer;  // Variable to hold device address (https://lastminuteengineers.com/multiple-ds18b20-arduino-tutorial/)
 int deviceCount = 0;
 
 void printAddress(DeviceAddress deviceAddress)
