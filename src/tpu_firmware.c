@@ -9,12 +9,12 @@ Version: 1.0 - 2025-02-28
 ***********************************************************************************************************************/
 
 #include <Arduino_FreeRTOS.h>
-#include <Ethernet2.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include <semphr.h>
-#include <OneWire.h>
 #include <DallasTemperature.h>
+#include <Ethernet2.h>
+#include <LiquidCrystal_I2C.h>
+#include <OneWire.h>
+#include <semphr.h>
+#include <Wire.h>
 
 // Displays
 #define LCD_1_I2C_ADDR    0x27
@@ -26,8 +26,10 @@ Version: 1.0 - 2025-02-28
 // DS18B20 tank sensors
 uint8_t sensor1_t1t[8] = { 0x28, 0x9C, 0x50, 0x43, 0xD4, 0xE1, 0x3C, 0x04 };
 uint8_t sensor2_t1m[8] = { 0x28, 0xC1, 0xA3, 0x43, 0xD4, 0xE1, 0x3C, 0x88 };
-uint8_t sensor3_t23[8] = { 0x28, 0x0F, 0x68, 0x43, 0xD4, 0xE1, 0x3C, 0x56 };
+uint8_t sensor3_t2t[8] = { 0x28, 0x0F, 0x68, 0x43, 0xD4, 0xE1, 0x3C, 0x56 };
 uint8_t sensor4_t3t[8] = { 0x28, 0x5C, 0x10, 0x43, 0xD4, 0xE1, 0x3C, 0x72 };
+
+#define ONE_WIRE_POLLING_DELAY_MS 10000
 
 void TaskUpdateDisplays(void *pvParameters);
 void TaskReadTempSensors(void *pvParameters);
@@ -39,8 +41,8 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 float temperatureT1T = 0.0;
 float temperatureT1M = 0.0;
+float temperatureT2T = 0.0;
 float temperatureT3T = 0.0;
-float tempProbe = 0.0;
 
 LiquidCrystal_I2C lcd_1(LCD_1_I2C_ADDR, 20, 4);
 LiquidCrystal_I2C lcd_2(LCD_2_I2C_ADDR, 20, 4);
@@ -88,13 +90,7 @@ void setup() {
   lcd_2.backlight();
 
   lcd_3.init();
-  lcd_3.backlight();
-
-  // The following doesn't seem to work
-  // lcd_t1_top.setCursor(0, 0);
-  // lcd_t1_top.print("FreeRTOS: 11.1.0");
-  // lcd_t1_top.setCursor(0, 1);
-  // lcd_t1_top.print("Starting TPU...");
+  lcd_3.noBacklight();
 
   Ethernet.begin(mac, ip);
 
@@ -106,7 +102,6 @@ void setup() {
   xTaskCreate(TaskWebServer, "WebServer", 256, NULL, 2, NULL);
   xTaskCreate(TaskUpdateDisplays, "UpdateDisplays", 128, NULL, 3, NULL);
 }
-
 
 void loop() {}
 
@@ -142,7 +137,6 @@ void TaskWebServer(void *pvParameters) {
         }
       }
 
-      // Serve JSON response
       if (request.indexOf("GET /temperatures") >= 0) {
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: application/json");
@@ -153,10 +147,11 @@ void TaskWebServer(void *pvParameters) {
         client.print(",\"t1m\":");
         client.print(temperatureT1M);
         client.print(",\"t2t\":");
-        client.print(tempProbe);
+        client.print(temperatureT2T);
+        client.print(",\"t3t\":");
+        client.print(temperatureT3T);
         client.println("}");
       }
-
       client.flush();
       client.stop();
     }
@@ -174,59 +169,49 @@ void TaskUpdateDisplays(void *pvParameters)
   {
     char buffer[16];
 
-    // if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
-    //     snprintf(buffer, sizeof(buffer), "T1 Topp: %d C", temperatureC);
-    //     xSemaphoreGive(snprintfMutex);
-    // }
-
+    // LCD 1, line 1: Tank 1 TOP
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
         char tempStr[15];
         dtostrf(temperatureT1T, 6, 2, tempStr);
         snprintf_P(buffer, sizeof(buffer), PSTR("T1 Top: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
     }
-
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     lcd_1.clear();
     lcd_1.setCursor(0, 0);
     lcd_1.print(buffer);
 
+    // LCD 1, line 2: Tank 1 MIDDLE
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
         char tempStr[15];
         dtostrf(temperatureT1M, 6, 2, tempStr);
         snprintf_P(buffer, sizeof(buffer), PSTR("T1 Mid: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
     }
-
     lcd_1.setCursor(0, 1);
     lcd_1.print(buffer);
 
-    lcd_2.clear();
-    lcd_2.setCursor(0, 0);
-    lcd_2.print("T1 Bot: N/A");
-    lcd_2.setCursor(0, 1);
-    lcd_2.print("IP:192.168.1.177");
-    
+    // LCD 2, line 1: Tank 2 TOP
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
         char tempStr[15];
-        dtostrf(tempProbe, 6, 2, tempStr);
+        dtostrf(temperatureT2T, 6, 2, tempStr);
         snprintf_P(buffer, sizeof(buffer), PSTR("T2 Top: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
     }
-    lcd_3.clear();
-    lcd_3.setCursor(0 ,0);
-    lcd_3.print(buffer);
+    lcd_2.clear();
+    lcd_2.setCursor(0, 0);
+    lcd_2.print(buffer);
 
+    // LCD 2, line 2: Tank 3 TOP
     if (xSemaphoreTake(snprintfMutex, portMAX_DELAY) == pdTRUE) {
         char tempStr[15];
         dtostrf(temperatureT3T, 6, 2, tempStr);
         snprintf_P(buffer, sizeof(buffer), PSTR("T3 Top: %sC"), tempStr);
         xSemaphoreGive(snprintfMutex);
     }
-
-    lcd_3.setCursor(0, 1);
-    lcd_3.print(buffer);
+    lcd_2.setCursor(0, 1);
+    lcd_2.print(buffer);
   }
 }
 
@@ -246,10 +231,10 @@ void TaskReadTempSensors(void *pvParameters)
 
   for (;;) {
     sensors.requestTemperatures();
-    //temperatureT1T = sensors.getTempCByIndex(0);
-    //temperatureT1M = sensors.getTempCByIndex(1);
+    temperatureT1T = sensors.getTempC(sensor1_t1t);
+    temperatureT1M = sensors.getTempC(sensor2_t1m);
+    temperatureT2T = sensors.getTempC(sensor3_t2t);
     temperatureT3T = sensors.getTempC(sensor4_t3t);
-    //tempProbe = sensors.getTempCByIndex(2);
-    vTaskDelay(pdMS_TO_TICKS(10000));  // Run every 10 seconds
+    vTaskDelay(pdMS_TO_TICKS(ONE_WIRE_POLLING_DELAY_MS));
   }
 }
