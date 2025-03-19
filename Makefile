@@ -8,6 +8,7 @@ ELF = firmware.elf
 OBJ = $(SRC:.c=.o)
 
 SRC = $(wildcard src/*.c)
+INCLUDE_DIRS = -I./libs/Arduino_FreeRTOS_Library/src/ -I./libs/DallasTemperature/ -I./libs/Ethernet2/src/ -I./libs/LiquidCrystal_I2C -I./libs/OneWire/
 
 AVR_GCCFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -Wall -std=c99
 AVR_OBJCOPYFLAGS = -O ihex -R .eeprom
@@ -20,11 +21,11 @@ $(HEX): $(ELF)
 
 # build the ELF-file from object files
 $(ELF): $(OBJ)
-	$(AVR_GCC) $(AVR_GCCFLAGS) -o $(ELF) $(OBJ)
+	$(AVR_GCC) $(AVR_GCCFLAGS) $(INCLUDE_DIRS) -o $(ELF) $(OBJ)
 
 # compile source files in src/ directory to object files
 $(OBJ): src/%.o : src/%.c
-	$(AVR_GCC) $(AVR_GCCFLAGS) -c $< -o $@
+	$(AVR_GCC) $(AVR_GCCFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
 # Flash to device (for MCUs having OptiBoot in place)
 flash: $(HEX)
