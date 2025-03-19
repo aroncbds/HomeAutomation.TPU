@@ -1,7 +1,7 @@
 # ----------------------------------------------------------------------------
 # To run explicitly with make:
 # docker run --rm -it \
-#   --entrypoint bash \
+#   --entrypoint make \
 #   -v /tmp/avr-hex:/workspace/build imageregistry.homenet.local/library/avr-devenv:latest
 #
 # docker image build -t imageregistry.homenet.local/library/avr-devenv:latest .
