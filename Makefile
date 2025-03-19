@@ -8,7 +8,7 @@ ELF = firmware.elf
 OBJ = $(SRC:.c=.o)
 
 SRC = $(wildcard src/*.c)
-INCLUDE_DIRS = -I./libs/Arduino_FreeRTOS_Library/src/ -I./libs/DallasTemperature/ -I./libs/Ethernet2/src/ -I./libs/LiquidCrystal_I2C -I./libs/OneWire/ -I./libs/Arduino/
+INCLUDE_DIRS = -I./libs/Arduino_FreeRTOS_Library/src/ -I./libs/DallasTemperature/ -I./libs/Ethernet2/src/ -I./libs/LiquidCrystal_I2C -I./libs/OneWire/ -I./libs/Arduino/ -I./libs/Arduino/libraries/SPI/src/ -I./libs/Arduino/libraries/Wire/src/
 
 AVR_GCCFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -Wall -std=c99
 AVR_OBJCOPYFLAGS = -O ihex -R .eeprom
