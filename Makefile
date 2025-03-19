@@ -1,42 +1,52 @@
-MCU = atmega2560
+# MCU settings
+BOARD = arduino:avr:uno
+PORT = /dev/ttyUSB0
 
-F_CPU = 16000000UL
+# Debugging settings
+DEBUGGER = avarice
+GDB = avr-gdb
+SIMULATOR = simavr
 
-CC = avr-gcc
-CXX = avr-g++
-OBJCOPY = avr-objcopy
-CFLAGS = -Wall -Os -DF_CPU=$(F_CPU) -mmcu=$(MCU) -std=gnu99
-CXXFLAGS = -Wall -Os -DF_CPU=$(F_CPU) -mmcu=$(MCU) -std=gnu++11
+# Directories
+BUILD_DIR = build
+SRC_DIR = src
+LIB_DIR = lib
 
-INCLUDE_DIRS = -I./include -I./src/FreeRTOS -I./src/libraries
+# Compiler flags
+CXXFLAGS = -Wall -Wextra -std=c++17 -g
+CXXFLAGS += -I$(LIB_DIR)
+CXXFLAGS += -DF_CPU=16000000UL
 
-SRC = $(wildcard src/*.c) $(wildcard src/libraries/*.c) $(wildcard src/FreeRTOS/*.c)
+# Object files
+SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
+OBJECTS = $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SOURCES))
 
-OBJ = $(SRC:.c=.o)
-TARGET = my_project.elf
-HEX = my_project.hex
+# Arduino CLI path (inside Docker)
+ARDUINO_CLI = arduino-cli
 
-AVRDUDE = avrdude
-AVRDUDE_FLAGS = -p $(MCU) -c wiring -P /dev/ttyUSB0 -b 115200 -U flash:w:$(HEX):i
+# Targets
+all: $(BUILD_DIR)/firmware.hex
 
-all: $(HEX)
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-$(HEX): $(TARGET)
-	$(OBJCOPY) -O ihex -R .eeprom $< $@
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
+	avr-g++ $(CXXFLAGS) -c $< -o $@
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) $(INCLUDE_DIRS) -o $@ $^
+$(BUILD_DIR)/firmware.elf: $(OBJECTS)
+	avr-g++ $(CXXFLAGS) $^ -o $@ -lm
 
-%.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDE_DIRS) -c $< -o $@
+$(BUILD_DIR)/firmware.hex: $(BUILD_DIR)/firmware.elf
+	avr-objcopy -O ihex -R .eeprom $< $@
+
+upload: $(BUILD_DIR)/firmware.hex
+	$(ARDUINO_CLI) upload -p $(PORT) --fqbn $(BOARD) --input-file $(BUILD_DIR)/firmware.hex
 
 clean:
-	rm -f $(OBJ) $(TARGET) $(HEX)
+	rm -rf $(BUILD_DIR)
 
-# Flash firmware to Arduino
-flash: $(HEX)
-	$(AVRDUDE) $(AVRDUDE_FLAGS)
+debug: $(BUILD_DIR)/firmware.elf
+	$(GDB) -ex "target remote localhost:4242" $(BUILD_DIR)/firmware.elf
 
-# Monitor Serial Output
-monitor:
-	minicom -b 115200 -D /dev/ttyUSB0
+simulate: $(BUILD_DIR)/firmware.elf
+	$(SIMULATOR) -g -m atmega328p $(BUILD_DIR)/firmware.elf
