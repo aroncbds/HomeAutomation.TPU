@@ -1,16 +1,31 @@
+// {
+//     "name": "AVR Development Container",
+//     "dockerFile": "Dockerfile",
+//     "context": "..",  // context is root of the repo
+//     "workspaceFolder": "/workspace",
+//     "mounts": [
+//         "source=${localWorkspaceFolder}/src,target=/workspace/src,type=bind" // Mount src to /workspace/src
+//     ],
+//     "settings": {
+//         "terminal.integrated.shell.linux": "/bin/bash"
+//     },
+//     "extensions": [
+//         "ms-vscode.cpptools", // C/C++ support
+//         "ms-vscode.makefile-tools" // Makefile support
+//     ]
+// }
+
 {
-    "name": "AVR Development Container",
-    "dockerFile": "Dockerfile",
-    "context": "..",  // context is root of the repo
-    "workspaceFolder": "/workspace",
-    "mounts": [
-        "source=${localWorkspaceFolder}/src,target=/workspace/src,type=bind" // Mount src to /workspace/src
-    ],
+    "name": "AVR Development Environment (remote)",
+    "dockerFile": "./Dockerfile",
+    "context": "..",
     "settings": {
-        "terminal.integrated.shell.linux": "/bin/bash"
+        "docker.dockerPath": "/usr/bin/docker",  // ensure Docker is running in the WSL instance
+        "docker.host": "unix:///var/run/docker.sock"
     },
     "extensions": [
-        "ms-vscode.cpptools", // C/C++ support
-        "ms-vscode.makefile-tools" // Makefile support
+      "ms-vscode.cpptools",
+      "ms-vscode.makefile-tools"
     ]
-}
+  }
+  
