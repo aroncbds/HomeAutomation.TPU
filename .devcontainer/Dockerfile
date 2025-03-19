@@ -35,7 +35,7 @@ RUN apt install -y \
     python3 python3-pip python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
-# Arduino CLI and dependencies
+# Arduino CLI and dependencies (the inc-files are needed by avra only)
 RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh && \
     mv bin/arduino-cli /usr/local/bin/ && \
     curl https://raw.githubusercontent.com/DarkSector/AVR/master/asm/include/m328Pdef.inc --output m328Pdef.inc && \
