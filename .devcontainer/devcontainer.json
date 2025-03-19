@@ -16,16 +16,10 @@
 // }
 
 {
-    "name": "AVR Development Environment (remote)",
-    "dockerFile": "./Dockerfile",
-    "context": "..",
-    "settings": {
-        "docker.dockerPath": "/usr/bin/docker",  // ensure Docker is running in the WSL instance
-        "docker.host": "unix:///var/run/docker.sock"
-    },
-    "extensions": [
-      "ms-vscode.cpptools",
-      "ms-vscode.makefile-tools"
-    ]
-  }
+  "name": "My AVR DevContainer",
+  "dockerFile": "Dockerfile",
+  "context": ".",
+  "runArgs": ["--network", "host"]
+}
+
   
