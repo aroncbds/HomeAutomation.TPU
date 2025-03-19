@@ -1,20 +1,16 @@
 {
-    "name": "Arduino Dev",
-    "build": {
-        "dockerfile": "Dockerfile",
-        "context": ".."
-    },
+    "name": "AVR Development Container",
+    "dockerFile": "Dockerfile",
+    "context": "..",  // context is root of the repo
+    "workspaceFolder": "/workspace",
+    "mounts": [
+        "source=${localWorkspaceFolder}/src,target=/workspace/src,type=bind" // Mount src to /workspace/src
+    ],
     "settings": {
-        "terminal.integrated.defaultProfile.linux": "/bin/bash"
+        "terminal.integrated.shell.linux": "/bin/bash"
     },
     "extensions": [
-        "ms-vscode.cpptools",
-        "ms-vscode.makefile-tools",
-        "platformio.platformio-ide"
-    ],
-    "runArgs": [
-        "--device=/dev/ttyUSB0"
-    ],
-    "remoteUser": "root",
-    "workspaceFolder": "/workspace"
+        "ms-vscode.cpptools", // C/C++ support
+        "ms-vscode.makefile-tools" // Makefile support
+    ]
 }

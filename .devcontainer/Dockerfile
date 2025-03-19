@@ -37,7 +37,7 @@ RUN apt install -y \
 
 WORKDIR /workspace
 
-# Arduino CLI
+# Arduino CLI and dependencies
 RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh && \
     echo 'export PATH=$PATH:/workspace/bin' >> /etc/profile && \
     echo 'export PATH=$PATH:/workspace/bin' >> ~/.bashrc && \
@@ -53,5 +53,7 @@ RUN arduino-cli core update && \
 RUN python3 -m venv /opt/platformio && \
     /opt/platformio/bin/pip install platformio && \
     ln -s /opt/platformio/bin/platformio /usr/local/bin/platformio
+
+WORKDIR /workspace
 
 ENTRYPOINT ["/bin/bash"]

@@ -1,52 +1,35 @@
-# MCU settings
-BOARD = arduino:avr:uno
-PORT = /dev/ttyUSB0
+MCU = atmega328p
+AVR_GCC = avr-gcc
+AVR_OBJCOPY = avr-objcopy
+AVRDUDE = avrdude
+F_CPU = 16000000
+HEX = firmware.hex
+ELF = firmware.elf
+OBJ = $(SRC:.c=.o)
 
-# Debugging settings
-DEBUGGER = avarice
-GDB = avr-gdb
-SIMULATOR = simavr
+SRC = $(wildcard src/*.c)
 
-# Directories
-BUILD_DIR = build
-SRC_DIR = src
-LIB_DIR = lib
+AVR_GCCFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -Wall -std=c99
+AVR_OBJCOPYFLAGS = -O ihex -R .eeprom
 
-# Compiler flags
-CXXFLAGS = -Wall -Wextra -std=c++17 -g
-CXXFLAGS += -I$(LIB_DIR)
-CXXFLAGS += -DF_CPU=16000000UL
+all: $(HEX)
 
-# Object files
-SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
-OBJECTS = $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SOURCES))
+# build the hex-file from the ELF-file
+$(HEX): $(ELF)
+	$(AVR_OBJCOPY) $(AVR_OBJCOPYFLAGS) $(ELF) $(HEX)
 
-# Arduino CLI path (inside Docker)
-ARDUINO_CLI = arduino-cli
+# build the ELF-file from object files
+$(ELF): $(OBJ)
+	$(AVR_GCC) $(AVR_GCCFLAGS) -o $(ELF) $(OBJ)
 
-# Targets
-all: $(BUILD_DIR)/firmware.hex
+# compile source files in src/ directory to object files
+$(OBJ): src/%.o : src/%.c
+	$(AVR_GCC) $(AVR_GCCFLAGS) -c $< -o $@
 
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+# Flash to device (for MCUs having OptiBoot in place)
+flash: $(HEX)
+	avrdude -c arduino -p m328p -P /dev/ttyACM0 -b 115200 -U flash:w:$(HEX):i
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
-	avr-g++ $(CXXFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/firmware.elf: $(OBJECTS)
-	avr-g++ $(CXXFLAGS) $^ -o $@ -lm
-
-$(BUILD_DIR)/firmware.hex: $(BUILD_DIR)/firmware.elf
-	avr-objcopy -O ihex -R .eeprom $< $@
-
-upload: $(BUILD_DIR)/firmware.hex
-	$(ARDUINO_CLI) upload -p $(PORT) --fqbn $(BOARD) --input-file $(BUILD_DIR)/firmware.hex
-
+# Clean up generated files
 clean:
-	rm -rf $(BUILD_DIR)
-
-debug: $(BUILD_DIR)/firmware.elf
-	$(GDB) -ex "target remote localhost:4242" $(BUILD_DIR)/firmware.elf
-
-simulate: $(BUILD_DIR)/firmware.elf
-	$(SIMULATOR) -g -m atmega328p $(BUILD_DIR)/firmware.elf
+	rm -f $(OBJ) $(ELF) $(HEX)
