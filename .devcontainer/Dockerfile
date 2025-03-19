@@ -35,18 +35,13 @@ RUN apt install -y \
     python3 python3-pip python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
-#WORKDIR /workspace
-
 # Arduino CLI and dependencies
 RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh && \
-#    echo 'export PATH=$PATH:/workspace/bin' >> /etc/profile && \
-#    echo 'export PATH=$PATH:/workspace/bin' >> ~/.bashrc && \
     mv bin/arduino-cli /usr/local/bin/ && \
     curl https://raw.githubusercontent.com/DarkSector/AVR/master/asm/include/m328Pdef.inc --output m328Pdef.inc && \
     curl https://github.com/DarkSector/AVR/blob/master/asm/include/m2560def.inc --output m2560def.inc
 
-# set PATH and install Arduino core
-#ENV PATH="/workspace/bin:$PATH"
+# install Arduino core
 RUN arduino-cli core update && \
     arduino-cli core install arduino:avr
 
@@ -54,7 +49,5 @@ RUN arduino-cli core update && \
 RUN python3 -m venv /opt/platformio && \
     /opt/platformio/bin/pip install platformio && \
     ln -s /opt/platformio/bin/platformio /usr/local/bin/platformio
-
-#WORKDIR /workspace
 
 ENTRYPOINT ["/bin/bash"]
