@@ -13,6 +13,7 @@ aroncbds@yahoo.se
 Version: 1.0 - 2025-02-28
 ***********************************************************************************************************************/
 
+// #include <Arduino.h>
 #include <Arduino_FreeRTOS.h>
 #include <DallasTemperature.h>
 #include <Ethernet2.h>
@@ -20,6 +21,7 @@ Version: 1.0 - 2025-02-28
 #include <OneWire.h>
 #include <semphr.h>
 #include <Wire.h>
+#include "tpu_firmware.h"
 
 // Displays
 #define LCD_1_I2C_ADDR    0x27
